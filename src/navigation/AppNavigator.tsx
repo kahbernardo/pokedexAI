@@ -5,6 +5,7 @@ import { PokedexScreen } from '../screens/PokedexScreen';
 import { PokemonDetailScreen } from '../screens/PokemonDetailScreen';
 import { DynamicJourneyScreen } from '../screens/DynamicJourneyScreen';
 import { GameDetailScreen } from '../screens/GameDetailScreen';
+import { FavoriteTypeScreen } from '../screens/FavoriteTypeScreen';
 
 const Stack = createStackNavigator();
 
@@ -21,6 +22,7 @@ export const AppNavigator = () => {
       <Stack.Screen name="PokemonDetail" component={PokemonDetailScreen} />
       <Stack.Screen name="DynamicJourney" component={DynamicJourneyScreen} />
       <Stack.Screen name="GameDetail" component={GameDetailScreen} />
+      <Stack.Screen name="FavoriteType" component={FavoriteTypeScreen} />
     </Stack.Navigator>
   );
 }; 

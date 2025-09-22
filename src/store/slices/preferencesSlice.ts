@@ -5,6 +5,7 @@ const initialState: PreferencesState = {
   darkMode: false,
   language: 'pt-br',
   isLoading: false,
+  favoriteType: 'none',
 };
 
 const preferencesSlice = createSlice({
@@ -23,10 +24,14 @@ const preferencesSlice = createSlice({
     toggleDarkMode: (state) => {
       state.darkMode = !state.darkMode;
     },
+    setFavoriteType: (state, action: PayloadAction<string>) => {
+      state.favoriteType = action.payload;
+    },
     resetPreferences: (state) => {
       state.darkMode = false;
       state.language = 'pt-br';
       state.isLoading = false;
+      state.favoriteType = 'none';
     },
   },
 });
@@ -36,6 +41,7 @@ export const {
   setLanguage,
   setLoading,
   toggleDarkMode,
+  setFavoriteType,
   resetPreferences,
 } = preferencesSlice.actions;
 

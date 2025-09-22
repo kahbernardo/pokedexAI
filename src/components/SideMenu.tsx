@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, TouchableOpacity } from 'react-native';
+import { Modal, TouchableOpacity, Text } from 'react-native';
 import styled from 'styled-components/native';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setLanguage, toggleDarkMode } from '../store/slices';
@@ -8,6 +8,7 @@ import { ThemeSwitch } from './ThemeSwitch';
 interface SideMenuProps {
   visible: boolean;
   onClose: () => void;
+  navigation?: any;
 }
 
 const Overlay = styled.TouchableOpacity`
@@ -153,6 +154,7 @@ const languages = [
 export const SideMenu: React.FC<SideMenuProps> = ({
   visible,
   onClose,
+  navigation,
 }) => {
   const dispatch = useAppDispatch();
   const language = useAppSelector(state => state.preferences.language);
@@ -212,6 +214,38 @@ export const SideMenu: React.FC<SideMenuProps> = ({
                 isDarkMode={darkMode} 
                 onToggle={handleDarkModeChange} 
               />
+            </OptionContainer>
+
+            <SectionTitle>Personalização</SectionTitle>
+            
+            <OptionContainer>
+              <TouchableOpacity
+                onPress={() => {
+                  onClose();
+                  navigation?.navigate('FavoriteType');
+                }}
+                style={{
+                  backgroundColor: '#F8F9FA',
+                  padding: 16,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: '#E5E5E5',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 24, marginRight: 12 }}>🎨</Text>
+                <Text style={{ 
+                  fontSize: 16, 
+                  fontFamily: 'Pokemon-Classic',
+                  color: '#333333',
+                  flex: 1 
+                }}>
+                  Tipo Favorito
+                </Text>
+                <Text style={{ fontSize: 16, color: '#666666' }}>→</Text>
+              </TouchableOpacity>
             </OptionContainer>
 
             <OptionContainer>

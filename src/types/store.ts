@@ -9,6 +9,7 @@ export interface PreferencesState {
   darkMode: boolean;
   language: string;
   isLoading: boolean;
+  favoriteType: string;
 }
 
 export interface FavoritesState {

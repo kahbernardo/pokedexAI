@@ -11,18 +11,22 @@ import styled from 'styled-components/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PokemonCard } from '../components/PokemonCard';
 import { FilterModal } from '../components/FilterModal';
-import { usePokemonList, usePokemonSearch, usePokemonByType } from '../hooks/usePokemon';
+import { usePokemonSearch, usePokemonByType } from '../hooks/usePokemon';
+import { useInfinitePokemon, useInfinitePokemonByType } from '../hooks/useInfinitePokemon';
 import { useDebounce } from '../hooks/useDebounce';
+import { usePokemonCache } from '../hooks/usePokemonCache';
 import { Pokemon } from '../types/pokemon';
 import { pokemonApi } from '../services/api';
 
 interface PokedexScreenProps {
   navigation: any;
+  route?: any;
 }
 
 const Container = styled(SafeAreaView)`
   flex: 1;
   background-color: ${(props: any) => props.theme.colors.background};
+  position: relative;
 `;
 
 const Header = styled.View`
@@ -158,17 +162,30 @@ const ClearFilterText = styled.Text`
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
 `;
 
-const LoadingContainer = styled.View`
+const ContentContainer = styled.View`
   flex: 1;
+  position: relative;
+`;
+
+const LoadingContainer = styled.View`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   justify-content: center;
   align-items: center;
+  background-color: ${(props: any) => props.theme.colors.background};
+  z-index: 10;
 `;
 
 const LoadingText = styled.Text`
-  margin-top: 10px;
+  margin-top: 16px;
   font-size: 16px;
   color: ${(props: any) => props.theme.colors.textMuted};
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
+  text-align: center;
+  line-height: 20px;
 `;
 
 const EmptyState = styled.View`
@@ -219,32 +236,59 @@ const SearchStatus = styled.Text`
   font-style: italic;
 `;
 
-export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
+export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation, route }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [currentFilter, setCurrentFilter] = useState<{ type: string; value: string } | null>(null);
   const [pokemonList, setPokemonList] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [gameFilter, setGameFilter] = useState<any>(null);
+  const [loadingProgress, setLoadingProgress] = useState<string>('');
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  const { pokemonList: defaultPokemonList, loading: defaultLoading, refetch: refetchDefault } = usePokemonList(20, 0);
+  const cache = usePokemonCache();
+  
+  // Hook para carregamento infinito padrão
+  const {
+    pokemonList: defaultPokemonList,
+    loading: defaultLoading,
+    loadingMore: loadingMoreDefault,
+    hasMore: hasMoreDefault,
+    loadMore: loadMoreDefault,
+    reset: resetDefault
+  } = useInfinitePokemon({ cache });
+  
+  // Hook para carregamento infinito por tipo
+  const {
+    pokemonList: typePokemonList,
+    loading: typeLoading,
+    loadingMore: loadingMoreType,
+    hasMore: hasMoreType,
+    loadMore: loadMoreType,
+    reset: resetType
+  } = useInfinitePokemonByType(currentFilter?.type === 'type' ? currentFilter.value : null);
+  
   const { searchResults, loading: searchLoading, searchPokemon } = usePokemonSearch();
-  const { pokemonList: typePokemonList, loading: typeLoading, fetchPokemonByType } = usePokemonByType();
 
   useEffect(() => {
     if (debouncedSearchQuery.trim()) {
       console.log(`🔍 Buscando por (debounced): "${debouncedSearchQuery}"`);
       setIsSearching(true);
       searchPokemon(debouncedSearchQuery);
-    } else if (currentFilter) {
-      handleFilter(currentFilter.type, currentFilter.value);
+    } else if (gameFilter) {
+      // Manter o filtro de jogo ativo
+      handleGameFilter(gameFilter);
+    } else if (currentFilter?.type === 'type') {
+      // O hook useInfinitePokemonByType já cuida disso
+      setPokemonList(typePokemonList);
     } else {
       setPokemonList(defaultPokemonList);
     }
-  }, [debouncedSearchQuery, currentFilter, defaultPokemonList]);
+  }, [debouncedSearchQuery, currentFilter, gameFilter, defaultPokemonList, typePokemonList]);
 
   useEffect(() => {
     if (searchQuery.trim() && !debouncedSearchQuery.trim()) {
@@ -269,6 +313,52 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
     }
   }, [typePokemonList]);
 
+  // Verificar se há filtro de jogo nos parâmetros da rota
+  useEffect(() => {
+    console.log('🔍 Verificando parâmetros da rota...');
+    console.log('📋 Route params:', route?.params);
+    
+    if (route?.params?.gameFilter) {
+      console.log('🎮 Filtro de jogo detectado:', route.params.gameFilter);
+      setGameFilter(route.params.gameFilter);
+      handleGameFilter(route.params.gameFilter);
+    } else {
+      console.log('❌ Nenhum filtro de jogo encontrado na rota');
+    }
+  }, [route?.params?.gameFilter]);
+
+  const handleGameFilter = async (gameFilterData: any) => {
+    console.log(`🎮 Filtrando Pokémon do jogo: ${gameFilterData.gameTitle}`);
+    console.log(`🎯 GameFilterData completo:`, gameFilterData);
+    console.log(`🆔 GameId: "${gameFilterData.gameId}"`);
+    
+    setLoading(true);
+    setLoadingProgress(`Carregando Pokémon de ${gameFilterData.gameTitle}...`);
+    
+    try {
+      // Usar a função específica por jogo para maior precisão (carregando apenas 20 inicialmente)
+      console.log(`🚀 Chamando pokemonApi.getPokemonByGame("${gameFilterData.gameId}", 20)`);
+      const results = await pokemonApi.getPokemonByGame(gameFilterData.gameId, 20);
+      
+      console.log(`✅ Encontrados ${results.length} Pokémon para o jogo ${gameFilterData.gameTitle}`);
+      console.log(`📝 Primeiros 3 resultados:`, results.slice(0, 3).map(p => `${p.id}: ${p.name}`));
+      setPokemonList(results);
+      
+      // Salvar informações do jogo para carregamento posterior
+      setGameFilter({
+        ...gameFilterData,
+        currentOffset: 20,
+        hasMore: results.length === 20
+      });
+    } catch (error) {
+      console.error('❌ Erro no filtro de jogo:', error);
+      Alert.alert('Erro', 'Erro ao carregar Pokémon do jogo');
+    } finally {
+      setLoading(false);
+      setLoadingProgress('');
+    }
+  };
+
   const handleFilter = async (filterType: string, filterValue: string) => {
     console.log(`🎯 Aplicando filtro: ${filterType} = ${filterValue}`);
     setLoading(true);
@@ -280,15 +370,10 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
           setSearchQuery(filterValue);
           break;
         case 'type':
-          await fetchPokemonByType(filterValue);
+          // O hook useInfinitePokemonByType já cuida disso automaticamente
           break;
         case 'generation':
-          const generation = await pokemonApi.getGeneration(parseInt(filterValue));
-          const pokemonPromises = generation.pokemon_species.slice(0, 20).map(async (species: any) => {
-            const id = species.url.split('/').slice(-2)[0];
-            return await pokemonApi.getPokemon(id);
-          });
-          results = await Promise.all(pokemonPromises);
+          results = await pokemonApi.getPokemonByGeneration(parseInt(filterValue));
           setPokemonList(results);
           break;
         case 'location':
@@ -297,11 +382,41 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
           break;
         case 'move':
           const move = await pokemonApi.getMove(filterValue);
+          // Usar Promise.allSettled para lidar com erros individuais
           const movePokemonPromises = move.learned_by_pokemon.slice(0, 20).map(async (pokemon: any) => {
-            const id = pokemon.url.split('/').slice(-2)[0];
-            return await pokemonApi.getPokemon(id);
+            try {
+              const id = pokemon.url.split('/').slice(-2)[0];
+              return await pokemonApi.getPokemon(id);
+            } catch (error) {
+              console.log(`⚠️ Erro ao carregar Pokémon do golpe: ${error}`);
+              return null;
+            }
           });
-          results = await Promise.all(movePokemonPromises);
+          const moveResults = await Promise.allSettled(movePokemonPromises);
+          results = moveResults
+            .filter((result): result is PromiseFulfilledResult<Pokemon> => 
+              result.status === 'fulfilled' && result.value !== null
+            )
+            .map(result => result.value);
+          setPokemonList(results);
+          break;
+        case 'region':
+          const pokemonIds = await pokemonApi.getPokemonByRegion(filterValue);
+          // Usar Promise.allSettled para lidar com erros individuais
+          const regionPokemonPromises = pokemonIds.slice(0, 20).map(async (id: number) => {
+            try {
+              return await pokemonApi.getPokemon(id);
+            } catch (error) {
+              console.log(`⚠️ Erro ao carregar Pokémon ${id}: ${error}`);
+              return null;
+            }
+          });
+          const regionResults = await Promise.allSettled(regionPokemonPromises);
+          results = regionResults
+            .filter((result): result is PromiseFulfilledResult<Pokemon> => 
+              result.status === 'fulfilled' && result.value !== null
+            )
+            .map(result => result.value);
           setPokemonList(results);
           break;
       }
@@ -323,7 +438,12 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
     console.log('🧹 Limpando filtros');
     setCurrentFilter(null);
     setSearchQuery('');
+    setGameFilter(null);
     setIsSearching(false);
+    
+    // Resetar os hooks de carregamento infinito
+    resetDefault();
+    resetType();
   };
 
   const handlePokemonPress = (pokemon: Pokemon) => {
@@ -331,13 +451,54 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
     navigation.navigate('PokemonDetail', { pokemonId: pokemon.id });
   };
 
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore) return;
+    
+    // Se há filtro de jogo ativo, carregar mais Pokémon do jogo
+    if (gameFilter) {
+      try {
+        setLoadingMore(true);
+        console.log(`📦 Carregando mais Pokémon do jogo ${gameFilter.gameId}...`);
+        
+        const morePokemon = await pokemonApi.getMorePokemonByGame(
+          gameFilter.gameId, 
+          gameFilter.currentOffset || 20, 
+          20
+        );
+        
+        if (morePokemon.length > 0) {
+          setPokemonList(prev => [...prev, ...morePokemon]);
+          setGameFilter(prev => ({
+            ...prev,
+            currentOffset: (prev?.currentOffset || 20) + 20,
+            hasMore: morePokemon.length === 20
+          }));
+          console.log(`✅ Mais ${morePokemon.length} Pokémon carregados do jogo`);
+        } else {
+          setGameFilter(prev => ({ ...prev, hasMore: false }));
+          console.log('🏁 Não há mais Pokémon para carregar do jogo');
+        }
+      } catch (error) {
+        console.error('❌ Erro ao carregar mais Pokémon do jogo:', error);
+      } finally {
+        setLoadingMore(false);
+      }
+    } else if (currentFilter?.type === 'type') {
+      loadMoreType();
+    } else if (!gameFilter && !currentFilter) {
+      loadMoreDefault();
+    }
+  };
+
   const onRefresh = async () => {
     console.log('🔄 Atualizando lista...');
     setRefreshing(true);
     if (currentFilter) {
       await handleFilter(currentFilter.type, currentFilter.value);
+    } else if (gameFilter) {
+      await handleGameFilter(gameFilter);
     } else {
-      await refetchDefault();
+      resetDefault();
     }
     setRefreshing(false);
   };
@@ -361,8 +522,14 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
   );
 
   const isLoading = loading || defaultLoading || searchLoading || typeLoading;
+  const isLoadingMore = loadingMoreDefault || loadingMoreType || loadingMore;
+  const hasMore = hasMoreDefault || hasMoreType || gameFilter?.hasMore;
 
   const getFilterDisplayName = () => {
+    if (gameFilter) {
+      return `Jogo: ${gameFilter.gameTitle}`;
+    }
+    
     if (!currentFilter) return '';
     
     const filterNames = {
@@ -370,6 +537,7 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
       type: 'Tipo',
       generation: 'Geração',
       location: 'Localidade',
+      region: 'Região',
       move: 'Golpe'
     };
     
@@ -382,7 +550,7 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
         <BackButton onPress={() => navigation.goBack()}>
           <BackButtonText>←</BackButtonText>
         </BackButton>
-        <Title>Pokédex</Title>
+        <Title>{gameFilter ? `Pokédex - ${gameFilter.gameTitle}` : 'Pokédex'}</Title>
         <FilterButton onPress={() => setFilterModalVisible(true)}>
           <FilterButtonText>🔍</FilterButtonText>
         </FilterButton>
@@ -399,7 +567,7 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          {(currentFilter || searchQuery) && (
+          {(currentFilter || gameFilter || searchQuery) && (
             <ClearButton onPress={handleClearFilters}>
               <ClearButtonText>✕</ClearButtonText>
             </ClearButton>
@@ -407,7 +575,7 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
         </SearchInputContainer>
       </SearchContainer>
 
-      {currentFilter && (
+      {(currentFilter || gameFilter) && (
         <ActiveFilterContainer>
           <ActiveFilterText>
             {getFilterDisplayName()}
@@ -418,25 +586,26 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
         </ActiveFilterContainer>
       )}
 
-      {isSearching && searchQuery.trim() && (
-        <SearchStatus>
-          Buscando por "{searchQuery}"...
-        </SearchStatus>
-      )}
+      <ContentContainer>
+        {isSearching && searchQuery.trim() && (
+          <SearchStatus>
+            Buscando por "{searchQuery}"...
+          </SearchStatus>
+        )}
 
-      {pokemonList.length > 0 && !isSearching && (
-        <ResultsCount>
-          {pokemonList.length} Pokémon encontrado{pokemonList.length !== 1 ? 's' : ''}
-        </ResultsCount>
-      )}
+        {pokemonList.length > 0 && !isSearching && (
+          <ResultsCount>
+            {pokemonList.length} Pokémon encontrado{pokemonList.length !== 1 ? 's' : ''}
+          </ResultsCount>
+        )}
 
-      {isLoading && !refreshing ? (
-        <LoadingContainer>
-          <ActivityIndicator size="large" color="#4A90E2" />
-          <LoadingText>Carregando Pokémon...</LoadingText>
-        </LoadingContainer>
-      ) : (
-        <FlatList
+        {isLoading && !refreshing ? (
+          <LoadingContainer>
+            <ActivityIndicator size="large" color="#4A90E2" />
+            <LoadingText>{loadingProgress || 'Carregando Pokémon...'}</LoadingText>
+          </LoadingContainer>
+        ) : (
+                  <FlatList
           data={pokemonList}
           renderItem={renderPokemonItem}
           keyExtractor={(item) => item.id.toString()}
@@ -447,9 +616,20 @@ export const PokedexScreen: React.FC<PokedexScreenProps> = ({ navigation }) => {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.1}
           ListEmptyComponent={renderEmptyState}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <LoadingContainer style={{ height: 60, paddingVertical: 20 }}>
+                <ActivityIndicator size="small" color="#4A90E2" />
+                <LoadingText style={{ marginTop: 8, fontSize: 14 }}>Carregando mais Pokémon...</LoadingText>
+              </LoadingContainer>
+            ) : null
+          }
         />
-      )}
+        )}
+      </ContentContainer>
 
       <FilterModal
         visible={filterModalVisible}

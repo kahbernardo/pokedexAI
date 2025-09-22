@@ -124,8 +124,9 @@ const InfoText = styled.Text`
 const InfoRow = styled.View`
   flex-direction: row;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 `;
 
 const InfoLabel = styled.Text`
@@ -133,12 +134,16 @@ const InfoLabel = styled.Text`
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
   color: ${(props: any) => props.theme.colors.textSecondary};
   font-weight: 600;
+  flex: 0 0 40%;
+  margin-right: 8px;
 `;
 
 const InfoValue = styled.Text`
   font-size: 14px;
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
   color: ${(props: any) => props.theme.colors.text};
+  flex: 1;
+  text-align: right;
 `;
 
 const PlatformTag = styled.View`
@@ -146,6 +151,8 @@ const PlatformTag = styled.View`
   padding-horizontal: 12px;
   padding-vertical: 6px;
   border-radius: 8px;
+  flex: 1;
+  align-items: flex-end;
 `;
 
 const PlatformText = styled.Text`
@@ -153,13 +160,14 @@ const PlatformText = styled.Text`
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
   color: #FFFFFF;
   font-weight: bold;
+  text-align: center;
 `;
 
-const GenerateButton = styled.TouchableOpacity`
-  background-color: #4CAF50;
+const ActionButton = styled.TouchableOpacity<{ backgroundColor: string }>`
+  background-color: ${props => props.backgroundColor};
   border-radius: 16px;
   padding: 20px;
-  margin-top: 20px;
+  margin: 20px 0 20px 0;
   elevation: 4;
   shadow-color: #000;
   shadow-offset: 0px 4px;
@@ -168,14 +176,26 @@ const GenerateButton = styled.TouchableOpacity`
   align-items: center;
 `;
 
-const GenerateButtonText = styled.Text`
+const GenerateButton = styled(ActionButton)`
+  background-color: #4CAF50;
+  margin: 20px 0 20px 0;
+`;
+
+const PokedexButton = styled(ActionButton)`
+  background-color: #E91E63;
+  margin: 0 0 40px 0;
+`;
+
+
+
+const ButtonText = styled.Text`
   font-size: 18px;
   font-family: ${(props: any) => props.theme.fonts.ketchum};
   color: #FFFFFF;
   font-weight: bold;
 `;
 
-const GenerateButtonSubtext = styled.Text`
+const ButtonSubtext = styled.Text`
   font-size: 12px;
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
   color: #FFFFFF;
@@ -183,6 +203,14 @@ const GenerateButtonSubtext = styled.Text`
   margin-top: 4px;
   text-align: center;
 `;
+
+const GenerateButtonText = styled(ButtonText)``;
+
+const GenerateButtonSubtext = styled(ButtonSubtext)``;
+
+const PokedexButtonText = styled(ButtonText)``;
+
+const PokedexButtonSubtext = styled(ButtonSubtext)``;
 
 const LoadingContainer = styled.View`
   flex: 1;
@@ -284,7 +312,7 @@ const pokemonGamesData = {
     releaseDate: '29 de janeiro de 2004',
     platform: 'Game Boy Advance',
     generation: 3,
-    pokemonRange: { start: 1, end: 386 },
+    pokemonRange: { start: 1, end: 151 },
     features: ['Remake dos originais', 'Ilha Sevii', 'Gráficos da 3ª geração', '151 Pokémon originais'],
     starters: ['Bulbasaur', 'Charmander', 'Squirtle']
   },
@@ -488,6 +516,20 @@ export const GameDetailScreen: React.FC<GameDetailScreenProps> = ({ navigation, 
     }
   };
 
+  const handleOpenPokedex = () => {
+    if (!game) return;
+    
+    // Navegar para a Pokédex com filtros específicos do jogo
+    navigation.navigate('Pokedex', {
+      gameFilter: {
+        gameId: game.id,
+        gameTitle: game.title,
+        pokemonRange: game.pokemonRange,
+        generation: game.generation
+      }
+    });
+  };
+
   if (!game) {
     return (
       <Container>
@@ -544,7 +586,7 @@ export const GameDetailScreen: React.FC<GameDetailScreenProps> = ({ navigation, 
           </InfoRow>
           <InfoRow>
             <InfoLabel>Starters:</InfoLabel>
-            <InfoValue>{game.starters.join(', ')}</InfoValue>
+            <InfoValue numberOfLines={2}>{game.starters.join(', ')}</InfoValue>
           </InfoRow>
         </InfoCard>
 
@@ -571,6 +613,16 @@ export const GameDetailScreen: React.FC<GameDetailScreenProps> = ({ navigation, 
             </>
           )}
         </GenerateButton>
+
+        <PokedexButton 
+          onPress={handleOpenPokedex}
+          activeOpacity={0.8}
+        >
+          <PokedexButtonText>Pokédex do Jogo</PokedexButtonText>
+          <PokedexButtonSubtext>
+            Ver todos os Pokémon disponíveis neste jogo
+          </PokedexButtonSubtext>
+        </PokedexButton>
       </Content>
 
       <SideMenu

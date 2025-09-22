@@ -287,6 +287,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <SideMenu
         visible={sideMenuVisible}
         onClose={() => setSideMenuVisible(false)}
+        navigation={navigation}
       />
     </Container>
   );

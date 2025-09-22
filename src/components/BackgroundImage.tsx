@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import { ImageBackground } from 'react-native';
+import { useAppSelector } from '../store/hooks';
 
 const BackgroundContainer = styled.View`
   position: absolute;
@@ -14,23 +15,35 @@ const BackgroundContainer = styled.View`
 
 
 export const BackgroundImage: React.FC = () => {
+  const favoriteType = useAppSelector(state => state.preferences.favoriteType);
+
+  const getBackgroundSource = () => {
+    if (favoriteType === 'none') {
+      return require('../../assets/backgrounds/menu-background.png');
+    }
+    
+    // Apenas os backgrounds válidos disponíveis
+    const backgroundMap: { [key: string]: any } = {
+      normal: require('../../assets/backgrounds/normal-background.png'),
+      fire: require('../../assets/backgrounds/fire-background.png'),
+      water: require('../../assets/backgrounds/water-background.png'),
+      dark: require('../../assets/backgrounds/dark-background.png'),
+    };
+
+    return backgroundMap[favoriteType] || require('../../assets/backgrounds/menu-background.png');
+  };
+
   return (
     <BackgroundContainer>
-      {/* Fundo temporário até a imagem PNG real ser adicionada */}
-      {/* <BackgroundContainer
+      <ImageBackground
+        source={getBackgroundSource()}
         style={{
-          backgroundColor: '#87CEEB',
           width: '100%',
           height: '100%',
         }}
-      /> */}
-      <ImageBackground
-      source={require('../../assets/backgrounds/menu-background.png')}
-      style={{
-        width: '100%',
-        height: '100%',
-      }}
+        
         resizeMode="cover"
+        onError={(error) => console.log('Erro ao carregar imagem de fundo:', error)}
       />
     </BackgroundContainer>
   );

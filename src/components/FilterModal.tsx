@@ -243,6 +243,12 @@ export const FilterModal: React.FC<FilterModalProps> = ({
       description: 'Encontre Pokémon que aprendem golpes específicos',
       icon: '💥'
     },
+    { 
+      id: 'region', 
+      title: '🌍 Filtrar por Região', 
+      description: 'Explore Pokémon por região do mundo',
+      icon: '🌍'
+    },
   ];
 
   const typeOptions = [
@@ -298,6 +304,14 @@ export const FilterModal: React.FC<FilterModalProps> = ({
             id: move.name,
             name: move.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             description: `Golpe: ${move.name}`
+          }));
+          break;
+        case 'region':
+          const regions = await pokemonApi.getRegions();
+          options = regions.results.map((region: any) => ({
+            id: region.name,
+            name: region.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            description: `Região: ${region.name}`
           }));
           break;
       }
@@ -391,7 +405,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
             <OptionsContainer>
               <SearchContainer>
                 <SearchInput
-                  placeholder={`Buscar ${selectedFilter === 'type' ? 'tipos' : selectedFilter === 'generation' ? 'gerações' : selectedFilter === 'location' ? 'localidades' : 'golpes'}...`}
+                  placeholder={`Buscar ${selectedFilter === 'type' ? 'tipos' : selectedFilter === 'generation' ? 'gerações' : selectedFilter === 'location' ? 'localidades' : selectedFilter === 'region' ? 'regiões' : 'golpes'}...`}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                 />

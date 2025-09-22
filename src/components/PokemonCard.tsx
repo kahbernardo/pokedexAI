@@ -19,64 +19,79 @@ const Card = styled.TouchableOpacity<{ backgroundColor: string }>`
   padding: 12px;
   margin-bottom: 16px;
   margin-horizontal: 6px;
-  background-color: ${(props: { backgroundColor: string }) => props.backgroundColor};
+  background-color: ${(props: { backgroundColor: string }) => props.backgroundColor || '#A8A878'};
   elevation: 3;
   shadow-color: ${(props: any) => props.theme.colors.shadow};
   shadow-offset: 0px 2px;
   shadow-opacity: 0.25;
   shadow-radius: 3.84px;
   position: relative;
+  overflow: hidden;
 `;
 
 const CardContent = styled.View`
   flex: 1;
+  margin-right: 70px; /* Espaço para a imagem */
+  padding-right: 2px;
 `;
 
 const Number = styled.Text`
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
   color: #FFFFFF;
   opacity: 0.8;
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
+  margin-bottom: 1px;
 `;
 
 const Name = styled.Text`
-  font-size: 16px;
+  font-size: 12px;
   font-weight: bold;
   color: #FFFFFF;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   text-align: left;
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
+  line-height: 14px;
 `;
 
 const TypeContainer = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
+  max-width: 100%;
 `;
 
 const TypeBadge = styled.View<{ backgroundColor: string }>`
-  padding-horizontal: 8px;
-  padding-vertical: 4px;
-  border-radius: 12px;
+  padding-horizontal: 4px;
+  padding-vertical: 1px;
+  border-radius: 6px;
   background-color: ${(props: { backgroundColor: string }) => props.backgroundColor};
-  margin-right: 4px;
-  margin-bottom: 4px;
+  border-width: 1px;
+  border-color: #FFFFFF;
+  margin-right: 2px;
+  margin-bottom: 2px;
+  elevation: 2;
+  shadow-color: #000;
+  shadow-offset: 0px 1px;
+  shadow-opacity: 0.2;
+  shadow-radius: 2px;
 `;
 
 const TypeText = styled.Text`
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 8px;
+  font-weight: 700;
   color: #FFFFFF;
   font-family: ${(props: any) => props.theme.fonts.pokemonClassic};
+  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const PokemonImage = styled.Image`
-  width: 80px;
-  height: 80px;
+  width: 68px;
+  height: 68px;
   position: absolute;
   bottom: 8px;
   right: 8px;
+  z-index: 1;
 `;
 
 const FavoriteButtonContainer = styled.View`
@@ -113,16 +128,20 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon, onPress }) =>
   };
 
   const getCardBackgroundColor = () => {
-    if (pokemon.types.length === 1) {
-      return getTypeColor(pokemon.types[0].type.name);
+    // Verificação robusta da estrutura de dados
+    if (!pokemon || !pokemon.types || !Array.isArray(pokemon.types) || pokemon.types.length === 0) {
+      return '#A8A878'; // Cor padrão
     }
     
-    const color1 = getTypeColor(pokemon.types[0].type.name);
-    const color2 = getTypeColor(pokemon.types[1].type.name);
+    const firstType = pokemon.types[0];
+    if (!firstType || !firstType.type || !firstType.type.name) {
+      return '#A8A878'; // Cor padrão
+    }
     
-    return `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
+    // Sempre usar o primeiro tipo para o background
+    return getTypeColor(firstType.type.name);
   };
-
+  
   return (
     <Card 
       backgroundColor={getCardBackgroundColor()}
@@ -135,10 +154,12 @@ export const PokemonCard: React.FC<PokemonCardProps> = ({ pokemon, onPress }) =>
       
       <CardContent>
         <Number>#{pokemon.id.toString().padStart(3, '0')}</Number>
-        <Name>{pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</Name>
+        <Name numberOfLines={1}>
+          {pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}
+        </Name>
         
         <TypeContainer>
-          {pokemon.types.map((type, index) => (
+          {pokemon.types && pokemon.types.map((type, index) => (
             <TypeBadge 
               key={index} 
               backgroundColor={getTypeColor(type.type.name)}
